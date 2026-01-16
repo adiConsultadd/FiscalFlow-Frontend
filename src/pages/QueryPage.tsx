@@ -9,6 +9,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { clsx } from 'clsx';
 
+// Fixed company for now
+const COMPANY = { ticker: 'PAYTM', name: 'One97 Communications' };
+
 // Stage configuration for progress
 const stages: { id: StreamStage; label: string }[] = [
     { id: 'started', label: 'Started' },
@@ -48,13 +51,13 @@ export function QueryPage() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (query.trim() && !isStreaming) {
-            executeQuery('user', query.trim());
+            executeQuery('user', query.trim(), COMPANY.ticker);
         }
     };
 
     const handleExampleClick = (text: string) => {
         setQuery(text);
-        executeQuery('user', text);
+        executeQuery('user', text, COMPANY.ticker);
     };
 
     const handleCopy = async () => {
@@ -84,13 +87,26 @@ export function QueryPage() {
                             </div>
                         </Link>
 
-                        <Link
-                            to="/history"
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
-                        >
-                            <History className="w-4 h-4" />
-                            <span className="hidden sm:inline">History</span>
-                        </Link>
+                        <div className="flex items-center gap-3">
+                            {/* Company Badge */}
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-default)]">
+                                <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[var(--primary-500)] to-[var(--accent)] flex items-center justify-center text-[10px] font-bold text-white">
+                                    PA
+                                </div>
+                                <div className="hidden sm:block">
+                                    <p className="text-xs font-medium text-[var(--text-primary)] leading-tight">{COMPANY.ticker}</p>
+                                    <p className="text-[10px] text-[var(--text-muted)]">{COMPANY.name}</p>
+                                </div>
+                            </div>
+
+                            <Link
+                                to="/history"
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                            >
+                                <History className="w-4 h-4" />
+                                <span className="hidden sm:inline">History</span>
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </header>
