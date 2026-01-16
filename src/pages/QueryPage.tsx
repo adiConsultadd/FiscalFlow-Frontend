@@ -10,7 +10,7 @@ import remarkGfm from 'remark-gfm';
 import { clsx } from 'clsx';
 
 // Fixed company for now
-const COMPANY = { ticker: 'PAYTM', name: 'One97 Communications' };
+const COMPANY = { ticker: 'one97', displayName: 'PAYTM', name: 'One97 Communications' };
 
 // Stage configuration for progress
 const stages: { id: StreamStage; label: string }[] = [
@@ -94,7 +94,7 @@ export function QueryPage() {
                                     PA
                                 </div>
                                 <div className="hidden sm:block">
-                                    <p className="text-xs font-medium text-[var(--text-primary)] leading-tight">{COMPANY.ticker}</p>
+                                    <p className="text-xs font-medium text-[var(--text-primary)] leading-tight">{COMPANY.displayName}</p>
                                     <p className="text-[10px] text-[var(--text-muted)]">{COMPANY.name}</p>
                                 </div>
                             </div>
