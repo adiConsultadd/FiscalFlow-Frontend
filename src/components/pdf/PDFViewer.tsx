@@ -56,8 +56,8 @@ export function PDFViewer({ source, isOpen, onClose }: PDFViewerProps) {
         setError(null);
     }, []);
 
-    const onDocumentLoadError = useCallback((error: Error) => {
-        console.error('PDF load error:', error);
+    const onDocumentLoadError = useCallback((err: Error) => {
+        console.error('PDF load error:', err);
         setError('Failed to load PDF document');
         setLoading(false);
     }, []);
@@ -183,12 +183,12 @@ export function PDFViewer({ source, isOpen, onClose }: PDFViewerProps) {
                     >
                         <div className="flex items-start gap-3 max-w-4xl mx-auto">
                             <Search className="w-4 h-4 text-[var(--primary-400)] mt-0.5 flex-shrink-0" />
-                            <div>
+                            <div className="flex-1">
                                 <p className="text-xs font-medium text-[var(--primary-400)] mb-1">
-                                    Looking for this text on page {targetPage}:
+                                    Citation from page {targetPage}
                                 </p>
                                 <p className="text-sm text-[var(--text-secondary)] line-clamp-2 italic">
-                                    "{source.text_content.slice(0, 200)}..."
+                                    "{source.text_content.slice(0, 250)}..."
                                 </p>
                             </div>
                         </div>

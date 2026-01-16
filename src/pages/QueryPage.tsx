@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, History, FileText, ChevronDown, ChevronUp, BookOpen, Copy, Check, AlertCircle, X, ArrowRight, TrendingUp, BarChart3, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Sparkles, FileText, ChevronDown, ChevronUp, BookOpen, Copy, Check, AlertCircle, X, ArrowRight, TrendingUp, BarChart3, ShieldCheck, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStreamingQuery } from '../hooks/useStreamingQuery';
 import { useQueryStore } from '../store/queryStore';
@@ -10,8 +10,20 @@ import remarkGfm from 'remark-gfm';
 import { clsx } from 'clsx';
 import { PDFViewer } from '../components/pdf/PDFViewer';
 
-// Fixed company for now
-const COMPANY = { ticker: 'one97', displayName: 'PAYTM', name: 'One97 Communications' };
+// Company options
+const COMPANIES = [
+    { ticker: 'one97', displayName: 'PAYTM', name: 'One97 Communications', initials: 'PA', available: true },
+    { ticker: 'tatasteel', displayName: 'Tata Steel', name: 'Tata Steel Ltd', initials: 'TS', available: false },
+    { ticker: 'irfc', displayName: 'IRFC', name: 'Indian Railway Finance', initials: 'IR', available: false },
+    { ticker: 'reliance', displayName: 'Reliance', name: 'Reliance Industries', initials: 'RL', available: false },
+    { ticker: 'tcs', displayName: 'TCS', name: 'Tata Consultancy Services', initials: 'TC', available: false },
+    { ticker: 'hdfc', displayName: 'HDFC Bank', name: 'HDFC Bank Ltd', initials: 'HD', available: false },
+    { ticker: 'infosys', displayName: 'Infosys', name: 'Infosys Ltd', initials: 'IN', available: false },
+    { ticker: 'icici', displayName: 'ICICI Bank', name: 'ICICI Bank Ltd', initials: 'IC', available: false },
+];
+
+// Default selected company
+const DEFAULT_COMPANY = COMPANIES[0];
 
 // Stage configuration for progress
 const stages: { id: StreamStage; label: string }[] = [
@@ -33,6 +45,20 @@ export function QueryPage() {
     const [query, setQuery] = useState('');
     const [copied, setCopied] = useState(false);
     const [pdfSource, setPdfSource] = useState<SourceChunk | null>(null);
+    const [selectedCompany, setSelectedCompany] = useState(DEFAULT_COMPANY);
+    const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setCompanyDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const {
         isStreaming,
@@ -53,13 +79,13 @@ export function QueryPage() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (query.trim() && !isStreaming) {
-            executeQuery('user', query.trim(), COMPANY.ticker);
+            executeQuery('user', query.trim(), selectedCompany.ticker);
         }
     };
 
     const handleExampleClick = (text: string) => {
         setQuery(text);
-        executeQuery('user', text, COMPANY.ticker);
+        executeQuery('user', text, selectedCompany.ticker);
     };
 
     const handleCopy = async () => {
@@ -73,8 +99,17 @@ export function QueryPage() {
         setQuery('');
     };
 
+    // Handle citation click - open PDF viewer for that source
+    const handleCitationClick = (evidenceId: number) => {
+        const source = sources.find(s => s.evidence_id === evidenceId);
+        if (source) {
+            setPdfSource(source);
+            setActiveCitation(evidenceId);
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-[var(--bg-primary)]">
+        <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col">
             {/* Header */}
             <header className="sticky top-0 z-50 border-b border-[var(--border-default)] bg-[var(--bg-primary)]/80 backdrop-blur-xl">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
@@ -85,35 +120,89 @@ export function QueryPage() {
                             </div>
                             <div className="hidden sm:block">
                                 <h1 className="font-bold text-lg text-[var(--text-primary)] leading-tight">FiscalFlow</h1>
-                                <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">AI Financial Analysis</p>
+                                <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Corporate Intelligence</p>
                             </div>
                         </Link>
 
-                        <div className="flex items-center gap-3">
-                            {/* Company Badge */}
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-default)]">
-                                <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[var(--primary-500)] to-[var(--accent)] flex items-center justify-center text-[10px] font-bold text-white">
-                                    PA
-                                </div>
-                                <div className="hidden sm:block">
-                                    <p className="text-xs font-medium text-[var(--text-primary)] leading-tight">{COMPANY.displayName}</p>
-                                    <p className="text-[10px] text-[var(--text-muted)]">{COMPANY.name}</p>
-                                </div>
-                            </div>
-
-                            <Link
-                                to="/history"
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                        {/* Company Dropdown */}
+                        <div className="relative" ref={dropdownRef}>
+                            <button
+                                onClick={() => setCompanyDropdownOpen(!companyDropdownOpen)}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border-default)] hover:border-[var(--border-strong)] transition-colors"
                             >
-                                <History className="w-4 h-4" />
-                                <span className="hidden sm:inline">History</span>
-                            </Link>
+                                <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[var(--primary-500)] to-[var(--accent)] flex items-center justify-center text-[10px] font-bold text-white">
+                                    {selectedCompany.initials}
+                                </div>
+                                <div className="hidden sm:block text-left">
+                                    <p className="text-xs font-medium text-[var(--text-primary)] leading-tight">{selectedCompany.displayName}</p>
+                                    <p className="text-[10px] text-[var(--text-muted)]">{selectedCompany.name}</p>
+                                </div>
+                                <ChevronDown className={clsx(
+                                    'w-4 h-4 text-[var(--text-muted)] transition-transform',
+                                    companyDropdownOpen && 'rotate-180'
+                                )} />
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            <AnimatePresence>
+                                {companyDropdownOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="absolute right-0 top-full mt-2 w-64 bg-[var(--bg-secondary)] border border-[var(--border-default)] rounded-xl shadow-xl overflow-hidden z-50"
+                                    >
+                                        {COMPANIES.map((company) => (
+                                            <button
+                                                key={company.ticker}
+                                                onClick={() => {
+                                                    if (company.available) {
+                                                        setSelectedCompany(company);
+                                                        setCompanyDropdownOpen(false);
+                                                    }
+                                                }}
+                                                disabled={!company.available}
+                                                className={clsx(
+                                                    'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
+                                                    company.available
+                                                        ? 'hover:bg-[var(--bg-tertiary)] cursor-pointer'
+                                                        : 'opacity-60 cursor-not-allowed',
+                                                    selectedCompany.ticker === company.ticker && 'bg-[var(--primary-500)]/10'
+                                                )}
+                                            >
+                                                <div className={clsx(
+                                                    'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white',
+                                                    company.available
+                                                        ? 'bg-gradient-to-br from-[var(--primary-500)] to-[var(--accent)]'
+                                                        : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
+                                                )}>
+                                                    {company.initials}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-sm font-medium text-[var(--text-primary)]">{company.displayName}</p>
+                                                        {!company.available && (
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--warning)]/20 text-[var(--warning)] font-medium">
+                                                                Coming Soon
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-[var(--text-muted)]">{company.name}</p>
+                                                </div>
+                                                {selectedCompany.ticker === company.ticker && company.available && (
+                                                    <Check className="w-4 h-4 text-[var(--primary-400)]" />
+                                                )}
+                                            </button>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+            <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 w-full">
                 {/* Hero - Only show when no results */}
                 <AnimatePresence mode="wait">
                     {!hasResults && !isStreaming && (
@@ -121,15 +210,31 @@ export function QueryPage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="text-center mb-8 sm:mb-12"
+                            className="flex flex-col items-center text-center mb-8 sm:mb-12"
                         >
                             <h2 className="text-2xl sm:text-4xl font-bold text-[var(--text-primary)] mb-3">
                                 Ask anything about
-                                <span className="text-gradient"> financial documents</span>
+                                <span className="text-gradient"> corporate documents</span>
                             </h2>
-                            <p className="text-sm sm:text-base text-[var(--text-secondary)] max-w-xl mx-auto">
-                                Get AI-powered answers from SEC filings with exact source citations
+                            <p className="text-sm sm:text-base text-[var(--text-secondary)] max-w-2xl mb-6">
+                                Get instant, AI-powered insights from quarterly results, concalls, investor presentations, and transcripts with verifiable source citations
                             </p>
+
+                            {/* Feature Pills */}
+                            <div className="flex flex-wrap gap-3 justify-center text-xs text-[var(--text-muted)]">
+                                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
+                                    Verifiable Sources
+                                </span>
+                                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary-400)]"></span>
+                                    Real-time Analysis
+                                </span>
+                                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]"></span>
+                                    Direct Document Links
+                                </span>
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -323,9 +428,10 @@ export function QueryPage() {
 
                                     {/* Answer Content */}
                                     <div className="px-4 sm:px-6 py-4 sm:py-6 prose prose-invert prose-sm max-w-none">
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {answer}
-                                        </ReactMarkdown>
+                                        <AnswerWithCitations
+                                            answer={answer}
+                                            onCitationClick={handleCitationClick}
+                                        />
                                     </div>
                                 </div>
                             )}
@@ -487,5 +593,80 @@ function SourceCard({ source, isActive, onClick, onViewDocument }: {
                 )}
             </div>
         </motion.div>
+    );
+}
+
+// Component to render answer with clickable citation links
+function AnswerWithCitations({
+    answer,
+    onCitationClick
+}: {
+    answer: string;
+    onCitationClick: (evidenceId: number) => void;
+}) {
+    // Parse answer and convert citation references to clickable links
+    // Matches patterns like: [Evidence 1], [1], [Source 2], [Ref 3], etc.
+    const citationPattern = /\[(?:Evidence|Source|Ref|Citation)?\s*(\d+)\]/gi;
+
+    // Split the answer by citation patterns
+    const parts: (string | { type: 'citation'; id: number; text: string })[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = citationPattern.exec(answer)) !== null) {
+        // Add text before the match
+        if (match.index > lastIndex) {
+            parts.push(answer.slice(lastIndex, match.index));
+        }
+
+        // Add the citation as a special object
+        parts.push({
+            type: 'citation',
+            id: parseInt(match[1]),
+            text: match[0]
+        });
+
+        lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < answer.length) {
+        parts.push(answer.slice(lastIndex));
+    }
+
+    // Render with ReactMarkdown for text parts and custom links for citations
+    return (
+        <div className="answer-with-citations">
+            {parts.map((part, index) => {
+                if (typeof part === 'string') {
+                    // Render markdown for text parts
+                    return (
+                        <ReactMarkdown
+                            key={index}
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                // Render paragraphs inline to avoid breaking flow
+                                p: ({ children }) => <span>{children}</span>
+                            }}
+                        >
+                            {part}
+                        </ReactMarkdown>
+                    );
+                } else {
+                    // Render citation as clickable link
+                    return (
+                        <button
+                            key={index}
+                            onClick={() => onCitationClick(part.id)}
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 rounded bg-[var(--primary-500)]/20 text-[var(--primary-400)] text-sm font-medium hover:bg-[var(--primary-500)]/30 hover:text-[var(--primary-300)] transition-colors cursor-pointer border-none"
+                            title={`Click to view source ${part.id}`}
+                        >
+                            <FileText className="w-3 h-3" />
+                            {part.text}
+                        </button>
+                    );
+                }
+            })}
+        </div>
     );
 }
