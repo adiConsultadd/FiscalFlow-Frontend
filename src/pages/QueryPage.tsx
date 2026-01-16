@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, History, FileText, ChevronDown, ChevronUp, BookOpen, Copy, Check, AlertCircle, X, ArrowRight, TrendingUp, BarChart3, ShieldCheck } from 'lucide-react';
+import { Sparkles, History, FileText, ChevronDown, ChevronUp, BookOpen, Copy, Check, AlertCircle, X, ArrowRight, TrendingUp, BarChart3, ShieldCheck, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStreamingQuery } from '../hooks/useStreamingQuery';
 import { useQueryStore } from '../store/queryStore';
@@ -8,6 +8,7 @@ import type { SourceChunk, StreamStage } from '../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { clsx } from 'clsx';
+import { PDFViewer } from '../components/pdf/PDFViewer';
 
 // Fixed company for now
 const COMPANY = { ticker: 'one97', displayName: 'PAYTM', name: 'One97 Communications' };
@@ -31,6 +32,7 @@ const exampleQueries = [
 export function QueryPage() {
     const [query, setQuery] = useState('');
     const [copied, setCopied] = useState(false);
+    const [pdfSource, setPdfSource] = useState<SourceChunk | null>(null);
 
     const {
         isStreaming,
@@ -345,6 +347,7 @@ export function QueryPage() {
                                                 onClick={() => setActiveCitation(
                                                     activeCitationId === source.evidence_id ? null : source.evidence_id
                                                 )}
+                                                onViewDocument={() => setPdfSource(source)}
                                             />
                                         ))}
                                     </div>
@@ -363,15 +366,25 @@ export function QueryPage() {
                     </p>
                 </div>
             </footer>
+
+            {/* PDF Viewer Modal */}
+            {pdfSource && (
+                <PDFViewer
+                    source={pdfSource}
+                    isOpen={!!pdfSource}
+                    onClose={() => setPdfSource(null)}
+                />
+            )}
         </div>
     );
 }
 
 // Source Card Component
-function SourceCard({ source, isActive, onClick }: {
+function SourceCard({ source, isActive, onClick, onViewDocument }: {
     source: SourceChunk;
     isActive: boolean;
     onClick: () => void;
+    onViewDocument: () => void;
 }) {
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -443,18 +456,34 @@ function SourceCard({ source, isActive, onClick }: {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center gap-3 px-3 sm:px-4 py-2 bg-[var(--bg-primary)]/50 border-t border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
-                {source.provenance.page_label && (
-                    <span className="flex items-center gap-1">
-                        <BookOpen className="w-3 h-3" />
-                        Page {source.provenance.page_label}
-                    </span>
-                )}
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 bg-[var(--bg-primary)]/50 border-t border-[var(--border-subtle)]">
+                <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
+                    {source.provenance.page_label && (
+                        <span className="flex items-center gap-1">
+                            <BookOpen className="w-3 h-3" />
+                            Page {source.provenance.page_label}
+                        </span>
+                    )}
+                    {source.provenance.file_name && (
+                        <span className="flex items-center gap-1 truncate max-w-[120px]">
+                            <FileText className="w-3 h-3" />
+                            {source.provenance.file_name}
+                        </span>
+                    )}
+                </div>
+
+                {/* View Document Button */}
                 {source.provenance.file_name && (
-                    <span className="flex items-center gap-1 truncate">
-                        <FileText className="w-3 h-3" />
-                        {source.provenance.file_name}
-                    </span>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onViewDocument();
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--accent)]/15 text-[var(--accent)] text-xs font-medium hover:bg-[var(--accent)]/25 transition-colors"
+                    >
+                        <ExternalLink className="w-3 h-3" />
+                        View Doc
+                    </button>
                 )}
             </div>
         </motion.div>
