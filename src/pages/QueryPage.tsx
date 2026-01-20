@@ -210,7 +210,7 @@ export function QueryPage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="flex flex-col items-center text-center mb-8 sm:mb-12"
+                            className="flex flex-col gap-4 items-center text-center mb-8 sm:mb-12"
                         >
                             <h2 className="text-2xl sm:text-4xl font-bold text-[var(--text-primary)] mb-3">
                                 Ask anything about
